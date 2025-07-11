@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Sphinx build output
+build/
+source/*.rst
+source/*.doctree
+
+# Sphinx-generated files
+*.doctree
+*.buildinfo
+environment.pickle
+genindex.html
+index.html
+*.html
+
+# OS and IDE-specific
+.DS_Store
+.vscode/
