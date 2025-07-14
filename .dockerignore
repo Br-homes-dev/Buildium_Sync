@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.git/
+secrets/creds.json  # only exclude if using Secret Manager instead
