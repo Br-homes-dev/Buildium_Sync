@@ -16,7 +16,7 @@ from googleapiclient.discovery import build
 
 # Constants for sheet structure
 SHEET_ID = os.environ.get("SHEET_ID")
-SHEET_NAME = os.environ.get("SHEET_NAME")  # Example: "Lease Balances"
+SHEET_NAME = os.environ.get("SHEET_NAME") 
 CREDENTIALS_PATH = "secrets/creds.json"
 
 # Column indexes (A=0, B=1, ..., AA=26)
