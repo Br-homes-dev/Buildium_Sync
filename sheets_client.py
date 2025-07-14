@@ -10,7 +10,7 @@ Handles interaction with the Google Sheets API, including:
 
 import os
 import json
-from typing import Dict
+from typing import Dict, List, Tuple
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
