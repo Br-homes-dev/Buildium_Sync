@@ -125,3 +125,48 @@ def append_sheet_row(details: Dict, balance: float, lease_id: str):
         insertDataOption="INSERT_ROWS",
         body=body
     ).execute()
+
+def batch_update_balances(updates: List[Tuple[int, float]]):
+    '''
+    Takes a list of (row_index, balance) and sends a single batch update.
+    '''
+    sheets = get_sheets_service()
+    data = [{
+        "range": f"{SHEET_NAME}!E{row}",
+        "values": [[balance]]
+    } for row, balance in updates]
+
+    sheets.values().batchUpdate(
+        spreadsheetId=SHEET_ID,
+        body={"valueInputOption": "USER_ENTERED", "data": data}
+    ).execute()
+
+
+def batch_append_new_leases(rows: List[Tuple[Dict, float, str]]):
+    '''
+    Takes a list of (details, balance, lease_id) and appends all at once.
+    '''
+    values = []
+
+    for details, balance, lease_id in rows:
+        new_row = [
+            details.get("tenant_name", ""),
+            details.get("address", ""),
+            details.get("phone_number", ""),
+            "",
+            balance
+        ]
+        while len(new_row) < LEASE_ID_COL:
+            new_row.append("")
+        new_row.append(lease_id)
+        values.append(new_row)
+
+    sheets = get_sheets_service()
+    sheets.values().append(
+        spreadsheetId=SHEET_ID,
+        range=f"{SHEET_NAME}!A:AA",
+        valueInputOption="USER_ENTERED",
+        insertDataOption="INSERT_ROWS",
+        body={"values": values}
+    ).execute()
+

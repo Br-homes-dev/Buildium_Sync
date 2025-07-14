@@ -66,7 +66,7 @@ def fetch_outstanding_balances() -> List[Dict]:
 
     url = f"{BUILDIUM_API_BASE}/leases/outstandingbalances"
 
-    response = request.get(url, headers=get_auth_headers())
+    response = requests.get(url, headers=get_auth_headers())
 
     if response.status_code != 200:
         raise Exception(f"Failed to fetch outstanding balances: {response.text}")
@@ -87,7 +87,7 @@ def fetch_lease_details(lease_id: str) -> Dict:
 
     # step 1: Fetch lease details (to get tenant and property IDs)
     lease_url = f"{BUILDIUM_API_BASE}/leases/{lease_id}"
-    lease_res = resquest.get(lease_url, headers=get_auth_headers())
+    lease_res = requests.get(lease_url, headers=get_auth_headers())
 
     if lease_res.status_code != 200:
         raise Exception(f"Failed to fetch lease details: {lease_res.text}")
