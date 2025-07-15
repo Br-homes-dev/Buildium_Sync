@@ -1,3 +1,4 @@
+
 import os
 import requests
 from flask import Flask, Response, request
@@ -5,11 +6,24 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import sys
 
+def get_env_var(name, default=None):
+    """
+    Safely retrieve an environment variable or return a default value.
+
+    Args:
+        name (str): Environment variable name.
+        default (Any, optional): Default value to use if not found.
+
+    Returns:
+        Any: The environment variable value or the default.
+    """
+    return os.environ.get(name, default)
+
 # Environment Variables
-SHEET_ID = os.environ["SHEET_ID"]
-SHEET_NAME = os.environ["SHEET_NAME"]
-BUILD_IUM_CLIENT_ID = os.environ["BUILD_IUM_CLIENT_ID"]
-BUILD_IUM_CLIENT_SECRET = os.environ["BUILD_IUM_CLIENT_SECRET"]
+SHEET_ID = get_env_var("SHEET_ID", "dummy_sheet_id")
+SHEET_NAME = get_env_var("SHEET_NAME", "Sheet1")
+BUILD_IUM_CLIENT_ID = get_env_var("BUILD_IUM_CLIENT_ID", "dummy")
+BUILD_IUM_CLIENT_SECRET = get_env_var("BUILD_IUM_CLIENT_SECRET", "dummy")
 
 # Setup credentials and API client
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -19,11 +33,19 @@ creds = service_account.Credentials.from_service_account_file(
 sheets = build("sheets", "v4", credentials=creds).spreadsheets()
 
 app = Flask(__name__)
+
 @app.before_request
 def log_request():
-    print(f"recived request: {request.path}", file=sys.stderr)
+    """Logs each incoming request path."""
+    print(f"received request: {request.path}", file=sys.stderr)
 
 def get_lease_id_map():
+    """
+    Build a mapping of lease IDs to row indices from the Google Sheet.
+
+    Returns:
+        dict: Lease ID to row index mapping.
+    """
     result = sheets.values().get(
         spreadsheetId=SHEET_ID,
         range=f"{SHEET_NAME}!AA2:AA"
@@ -32,12 +54,17 @@ def get_lease_id_map():
     return {row[0]: idx + 2 for idx, row in enumerate(values) if row}
 
 def get_outstanding_balances():
+    """
+    Fetch outstanding lease balances from Buildium API.
+
+    Returns:
+        list: All outstanding balances.
+    """
     all_balances = []
     limit = 1000
     offset = 0
-    total_count = float("inf")
 
-    while offset < total_count:
+    while True:
         url = f"https://api.buildium.com/v1/leases/outstandingbalances?limit={limit}&offset={offset}"
         res = requests.get(url, headers={
             "x-buildium-client-id": BUILD_IUM_CLIENT_ID,
@@ -54,6 +81,15 @@ def get_outstanding_balances():
     return all_balances
 
 def get_lease_details(lease_id):
+    """
+    Retrieve lease details from Buildium API.
+
+    Args:
+        lease_id (int): Lease ID.
+
+    Returns:
+        dict or None: Lease details or None if failed.
+    """
     res = requests.get(f"https://api.buildium.com/v1/leases/{lease_id}", headers={
         "x-buildium-client-id": BUILD_IUM_CLIENT_ID,
         "x-buildium-client-secret": BUILD_IUM_CLIENT_SECRET,
@@ -62,6 +98,15 @@ def get_lease_details(lease_id):
     return res.json() if res.ok else None
 
 def get_property_details(property_id):
+    """
+    Get property address details.
+
+    Args:
+        property_id (int): Property ID.
+
+    Returns:
+        dict or None: Property details or None if failed.
+    """
     res = requests.get(f"https://api.buildium.com/v1/rentals/{property_id}", headers={
         "x-buildium-client-id": BUILD_IUM_CLIENT_ID,
         "x-buildium-client-secret": BUILD_IUM_CLIENT_SECRET,
@@ -70,6 +115,12 @@ def get_property_details(property_id):
     return res.json() if res.ok else None
 
 def write_to_sheet(updates):
+    """
+    Batch write outstanding balances to Google Sheet.
+
+    Args:
+        updates (list): List of (row, value) tuples.
+    """
     data = [{
         "range": f"{SHEET_NAME}!E{row}",
         "values": [[value]]
@@ -80,6 +131,12 @@ def write_to_sheet(updates):
     ).execute()
 
 def append_new_rows(rows):
+    """
+    Append new lease entries to the Google Sheet.
+
+    Args:
+        rows (list): Rows to append.
+    """
     if not rows:
         return
     sheets.values().append(
@@ -91,6 +148,12 @@ def append_new_rows(rows):
     ).execute()
 
 def sync_outstanding_balances():
+    """
+    Main sync function to update or append lease data.
+
+    Returns:
+        str: Summary of sync operation.
+    """
     lease_map = get_lease_id_map()
     balances = get_outstanding_balances()
 
@@ -116,7 +179,6 @@ def sync_outstanding_balances():
         if not lease:
             continue
 
-        # ✅ Safe handling of missing or empty CurrentTenants
         tenants = lease.get("CurrentTenants", [])
         if tenants:
             tenant = tenants[0]
@@ -126,7 +188,6 @@ def sync_outstanding_balances():
             tenant_name = ""
             phone = ""
 
-        # Get address
         property_id = lease.get("PropertyId")
         address = ""
         if property_id:
@@ -134,7 +195,6 @@ def sync_outstanding_balances():
             if prop:
                 address = prop.get("Address", {}).get("AddressLine1", "")
 
-        # Construct row
         row = [""] * 27
         row[0] = tenant_name
         row[1] = address
@@ -153,9 +213,14 @@ def sync_outstanding_balances():
 
     return f"✅ Synced {len(updates)} updates, {len(new_rows)} new rows."
 
-
 @app.route("/")
 def run_sync():
+    """
+    HTTP endpoint to trigger the sync process.
+
+    Returns:
+        Response: Sync status text and HTTP status code.
+    """
     try:
         result = sync_outstanding_balances()
         return result, 200
@@ -166,6 +231,7 @@ def run_sync():
 
 @app.route("/health")
 def health():
+    """Health check endpoint."""
     return "👍 Healthy", 200
 
 if __name__ == "__main__":
