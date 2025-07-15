@@ -141,7 +141,7 @@ def append_new_rows(rows):
         return
     sheets.values().append(
         spreadsheetId=SHEET_ID,
-        range=f"{SHEET_NAME}!A2:AA",
+        range=f"{SHEET_NAME}!A2",
         valueInputOption="RAW",
         insertDataOption="INSERT_ROWS",
         body={"values": rows}
