@@ -48,19 +48,9 @@ Deployment Steps
      --update-secrets "/secrets/creds.json=sheets-creds:latest"
 
 4. Grant Cloud Run Invoker to Cloud Scheduler:
-   gcloud run services add-iam-policy-binding buildium-sync ^
-     --platform managed ^
-     --region us-central1 ^
-     --member="serviceAccount:429867287026-compute@developer.gserviceaccount.com" ^
-     --role="roles/run.invoker"
-
+  
 5. Update Scheduler Job to use OIDC:
-   gcloud scheduler jobs update http buildium-sync-job ^
-     --location=us-central1 ^
-     --uri="https://buildium-sync-429867287026.us-central1.run.app/" ^
-     --http-method=GET ^
-     --oidc-service-account-email="429867287026-compute@developer.gserviceaccount.com"
-
+    
 Endpoints
 ---------
 - /          → Triggers a sync from Buildium to Google Sheets
